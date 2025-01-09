@@ -6,7 +6,7 @@ from azure.iot.device import IoTHubDeviceClient, Message, MethodResponse
 import json
 
 CounterFitConnection.init('127.0.0.1', 5000)
-connection_string = "HostName=testepraticohub-20221849.azure-devices.net;DeviceId=testepratico;SharedAccessKey=smhYgzYPqcJt/7BARmhNWxRWClxjHHiQoB808nPezbk="
+connection_string = "<HostName-conKey>"
 device_client = IoTHubDeviceClient.create_from_connection_string(connection_string)
 light_sensor = GroveLightSensor(0)
 led = GroveLed(5)
