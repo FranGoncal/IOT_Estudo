@@ -77,6 +77,26 @@ azure-iot-hub
 #instalar os requirimentos
 pip3 install -r requirements.txt
 
-#------------- deploy na cloud ----------
+#------------- deploy na cloud ----------------
+
+#criar uma storage
+az storage account create --resource-group <soil-moisture-sensor> --sku Standard_LRS --name <storage_name> 
+
+#criar a funcao nessa storage
+az functionapp create --resource-group <soil-moisture-sensor> --runtime python --functions-version 3 --os-type Linux --consumption-plan-location uksouth --storage-account <storage_name> --name <functions_app_name>
+
+#configurar as strs de conexao
+az functionapp config appsettings set --resource-group <soil-moisture-sensor> --name <functions_app_name> --settings "IOT_HUB_CONNECTION_STRING=<connection string>"
+az functionapp config appsettings set --resource-group <soil-moisture-sensor> --name <functions_app_name> --settings "REGISTRY_MANAGER_CONNECTION_STRING=<connection string>"
+
+#publicar a funcao
+func azure functionapp publish <functions_app_name>
+
+
+
+
+
+
+
 
 
