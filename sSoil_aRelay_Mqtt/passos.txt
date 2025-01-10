@@ -1,3 +1,4 @@
+aqui não ha azure
 #lissao 3 codigo em 
   coisa   # code-mqtt/virtual-device/app.py
   server  # code-timing/server/app.py
