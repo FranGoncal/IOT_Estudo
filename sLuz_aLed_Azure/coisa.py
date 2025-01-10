@@ -15,12 +15,6 @@ print('Connecting')
 device_client.connect()
 print('Connected')
 
-id = 'testepratico-sensor'
-
-client_telemetry_topic = id + '/telemetry'
-client_name = id + 'nightlight_client'
-
-
 def handle_method_request(request):
 	print("Direct method received - ", request.name)
 
