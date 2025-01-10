@@ -1,1 +1,146 @@
+# Grupo de recursos
+az group create --name <MeuGrupoDeRecursos> --location eastus
+
+# Crie o IoT Hub
+az iot hub create --resource-group <MeuGrupoDeRecursos> --sku F1 --partition-count 2 --name MeuIoTHub
+
+# Crie a identidade do dispositivo
+az iot hub device-identity create --device-id <MeuDispositivo> --hub-name <MeuIoTHub>
+
+# Obtenha a cadeia de conexão do dispositivo
+az iot hub device-identity connection-string show --device-id <MeuDispositivo> --output table --hub-name <MeuIoTHub>
+
+###monitorar eventos
+###az iot hub monitor-events --properties anno --hub-name <hub_name>
+
+
+----------------------------
+
+
+#criar uma diretoria para a azurite
+#correr a azurite
+azurite --location azurite
+
+
+-----------------------------
+
+
+#criar uma pasta para o trigger <nome-proj-trigger>
+func init --worker-runtime python <nome-proj-trigger>
+
+#Em local.settings.json alterar:
+"AzureWebJobsStorage": "UseDevelopmentStorage=true",
+
+pip3 install -r requirements.txt
+
+#testar
+func start
+#output:
+'...soil-moisture-trigger$ func start
+'Found Python version 3.9.1 (python3).
+'Azure Functions Core Tools
+'Core Tools Version:       3.0.3442 Commit hash: 6bfab24b2743f8421475d996402c398d2fe4a9e0  (64-bit)
+'Function Runtime Version: 3.0.15417.0
+'
+'[2021-05-05T01:24:46.795Z] No job functions found.
+
+-----------------------------
+
+#guarda a connection string
+az iot hub connection-string show --default-eventhub --output table --hub-name <hub_name>
+
+#no ficheiro local.settings.json adicionar:
+"IOT_HUB_CONNECTION_STRING": "<connection string>"
+#substituir a connection string
+
+------------------------------
+
+#Criar um event trigger
+func new --name iot-hub-trigger --template "Azure Event Hub trigger"
+
+#em diretoria/__init__.py substituir por ----[
+import logging
+import azure.functions as func
+
+def main(event: func.EventHubEvent):
+    logging.info('Python EventHub trigger processed an event: %s',
+                event.get_body().decode('utf-8'))
+]----
+
+#alterar em function.json
+"cardinality": "one",
+"connection": "IOT_HUB_CONNECTION_STRING",
+"eventHubName": "",
+"name": "event",
+
+#alterar em host.json
+"version": "[2.*, 3.0.0)"
+
+
+func start (deveria funcionar acho)
+
+--------------------------------------
+
+#connection str 
+az iot hub connection-string show --policy-name service --output table --hub-name <hub_name>
+
+#alterar em local.settings.json
+"REGISTRY_MANAGER_CONNECTION_STRING": "<connection string>"
+
+#adiciona ao requirements.txt
+azure-iot-hub
+
+pip3 install -r requirements.txt
+
+#adicionar os imports 
+import json
+import os
+from azure.iot.hub import IoTHubRegistryManager
+from azure.iot.hub.models import CloudToDeviceMethod
+
+#remover o codigo do metodo main mas deixar o metodo main em si
+#adiciona no main-----[
+body = json.loads(event.get_body().decode('utf-8'))
+device_id = event.iothub_metadata['connection-device-id']
+
+logging.info(f'Received message: {body} from {device_id}')
+]----
+
+
+#por baixo a lógica----[
+soil_moisture = body['soil_moisture']
+
+if soil_moisture > 450:
+    direct_method = CloudToDeviceMethod(method_name='relay_on', payload='{}')
+else:
+    direct_method = CloudToDeviceMethod(method_name='relay_off', payload='{}')
+
+logging.info(f'Sending direct method request for {direct_method.method_name} for device {device_id}')
+registry_manager_connection_string = os.environ['REGISTRY_MANAGER_CONNECTION_STRING']
+registry_manager = IoTHubRegistryManager(registry_manager_connection_string)
+
+registry_manager.invoke_device_method(device_id, direct_method)
+logging.info('Direct method request sent!')
+]----
+
+func start
+
+------------------------------------------------------------
+
+#####POR NA CLOUD######
+
+az storage account create --resource-group <resource-group> --sku Standard_LRS --name <storage_name> 
+
+az functionapp create --resource-group <resource-group> --runtime python --functions-version 3 --os-type Linux --consumption-plan-location uksouth --storage-account <storage_name> --name <functions_app_name>
+#<functions_app_name> é unico
+
+#connection string tem de ser IOT_HUB_CONNECTION_STRING from your local.settings.json
+az functionapp config appsettings set --resource-group soil-moisture-sensor --name <functions_app_name> --settings "IOT_HUB_CONNECTION_STRING=<connection string>"
+az functionapp config appsettings set --resource-group soil-moisture-sensor --name <functions_app_name> --settings "REGISTRY_MANAGER_CONNECTION_STRING=<connection string>"
+
+
+func azure functionapp publish <functions_app_name>
+
+
+###############################   fim   ##############################
 
