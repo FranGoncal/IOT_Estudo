@@ -1,0 +1,983 @@
+=========================================================================
+=========================================================================
+		LESSON 1 - INTRUDUCTION TO IOT		          
+=========================================================================
+=========================================================================
+
+INSTALAR COUNTERFIT:
+
+pip3 install CounterFit
+pip3 install werkzeug==2.2.2
+pip3 install counterfit-connection
+pip3 install counterfit-shims-grove
+
+=========================================================================
+
+ABRIR COUNTERFIT:
+
+counterfit
+http://127.0.0.1:5000/
+
+=========================================================================
+
+CRIAR PASTA DO PROJECTO E FICHERO app.py:
+
+cd Desktop
+mkdir <nome da pasta do projeto>
+cd <nome da pasta do projeto>
+touch app.py
+
+=========================================================================
+
+ABRIR VIRTUAL CODE:
+
+code .
+
+=========================================================================
+
+CORRER APP NA LINHA DE COMANDOS:
+
+python3 app.py
+
+=========================================================================
+
+PARA LIGAR A APP AO COUNTERFIT, COLOCAR NO TOPO DA APP:
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+
+=========================================================================
+=========================================================================
+		LESSON 3 - SENSORS AND ACTUATORS		          
+=========================================================================
+=========================================================================
+
+3.1)CRIAR FICHEIRO APP.py PARA O SENSOR COM O SEGUINTE CÓDIGO:
+
+import time
+from counterfit_connection import CounterFitConnection
+from counterfit_shims_grove.grove_light_sensor_v1_2 import GroveLightSensor
+
+CounterFitConnection.init('127.0.0.1', 5000)
+
+light_sensor = GroveLightSensor(0)
+
+while True:
+    light = light_sensor.light
+    print('Light level:', light)
+    
+    time.sleep(1)
+    
+=========================================================================
+
+3.2)CRIAR FICHEIRO APP.py PARA O ATUADOR COM O SEGUINTE CÓDIGO:
+
+import time
+from counterfit_connection import CounterFitConnection
+from counterfit_shims_grove.grove_light_sensor_v1_2 import GroveLightSensor
+from counterfit_shims_grove.grove_led import GroveLed
+
+CounterFitConnection.init('127.0.0.1', 5000)
+
+light_sensor = GroveLightSensor(0)
+led = GroveLed(5)
+
+while True:
+    light = light_sensor.light
+    print('Light level:', light)
+
+    if light < 300:
+        led.on()
+    else:
+        led.off()
+    
+    time.sleep(1)
+    
+   
+=========================================================================
+
+3.3)CORRER AS APPS EM JANELAS DO TERMINAL SEPARADAS AO MESMO TEMPO QUE 
+SE CORRE O COUNTERFIT NOUTRA JANELA. O SENSOR E ATUADOR DEVEM TER SIDO 
+PREVIAMENTE ADICIONADOS NO COUNTERFIT - NESTE CASO SENSOR LIGHT NO PIN 0
+E ATUADOR LED NO PIN 5
+
+
+=========================================================================
+=========================================================================
+      LESSON 4 - CONNECT YOUR DEVICE TO THE INTERNET (MQTT)	  	   
+=========================================================================
+=========================================================================
+
+INSTALAR MQTT:
+
+pip3 install paho-mqtt==1.6.1
+
+=========================================================================
+
+CRIAR UM VALOR DE ID ÚNICO NO SITE:
+
+https://www.guidgen.com/
+
+=========================================================================
+
+0)CRIAR FICHEIRO APP.py PARA O SENSOR/ATUADOR (SUBSTITUIR O VALOR DO ID):
+
+import time
+from counterfit_connection import CounterFitConnection
+from counterfit_shims_grove.grove_light_sensor_v1_2 import GroveLightSensor
+from counterfit_shims_grove.grove_led import GroveLed
+import paho.mqtt.client as mqtt
+
+CounterFitConnection.init('127.0.0.1', 5000)
+
+light_sensor = GroveLightSensor(0)
+led = GroveLed(5)
+
+id = '<ID>'
+
+client_name = id + 'nightlight_client'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+print("MQTT connected!")
+
+while True:
+    light = light_sensor.light
+    print('Light level:', light)
+
+    if light < 300:
+        led.on()
+    else:
+        led.off()
+    
+    time.sleep(1)
+    
+=========================================================================
+
+0)CRIAR FICHEIRO APP.py PARA O SENSOR/ATUADOR PARA 
+ENVIAR TELEMETRIA EM JSON (SUBSTITUIR O VALOR DO ID):
+
+import time
+from counterfit_connection import CounterFitConnection
+from counterfit_shims_grove.grove_light_sensor_v1_2 import GroveLightSensor
+from counterfit_shims_grove.grove_led import GroveLed
+import paho.mqtt.client as mqtt
+import json
+
+CounterFitConnection.init('127.0.0.1', 5000)
+
+light_sensor = GroveLightSensor(0)
+led = GroveLed(5)
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+client_name = id + 'nightlight_client'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+print("MQTT connected!")
+
+while True:
+    light = light_sensor.light
+    telemetry = json.dumps({'light' : light})
+
+    print("Sending telemetry ", telemetry)
+
+    mqtt_client.publish(client_telemetry_topic, telemetry)
+
+    time.sleep(5)
+    
+=========================================================================
+
+4.1)CRIAR FICHEIRO APP.py PARA O SENSOR/ATUADOR PARA 
+ENVIAR TELEMETRIA EM JSON E 
+COMUNICAR COM FICHEIRO DE SERVIDOR (SUBSTITUIR O VALOR DO ID):
+
+import time
+from counterfit_connection import CounterFitConnection
+from counterfit_shims_grove.grove_light_sensor_v1_2 import GroveLightSensor
+from counterfit_shims_grove.grove_led import GroveLed
+import json
+import paho.mqtt.client as mqtt
+
+CounterFitConnection.init('127.0.0.1', 5000)
+
+light_sensor = GroveLightSensor(0)
+led = GroveLed(5)
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+server_command_topic = id + '/commands'
+client_name = id + 'nightlight_client'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+def handle_command(client, userdata, message):
+    payload = json.loads(message.payload.decode())
+    print("Message received:", payload)
+
+    if payload['led_on']:
+        led.on()
+    else:
+        led.off()
+
+mqtt_client.subscribe(server_command_topic)
+mqtt_client.on_message = handle_command
+
+while True:
+    light = light_sensor.light
+    print('Light level:', light)
+
+    mqtt_client.publish(client_telemetry_topic, json.dumps({'light' : light}))
+    time.sleep(5)
+
+=========================================================================
+
+4.2)CRIAR FICHEIRO DE SERVIDOR LOCAL SERVER.py (SUBSTITUIR O VALOR DO ID):
+
+import json
+import time
+
+import paho.mqtt.client as mqtt
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+server_command_topic = id + '/commands'
+client_name = id + 'nightlight_server'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+def handle_telemetry(client, userdata, message):
+    payload = json.loads(message.payload.decode())
+    print("Message received:", payload)
+
+    command = { 'led_on' : payload['light'] < 300 }
+    print("Sending message:", command)
+
+    client.publish(server_command_topic, json.dumps(command))
+
+mqtt_client.subscribe(client_telemetry_topic)
+mqtt_client.on_message = handle_telemetry
+
+while True:
+    time.sleep(2)
+    
+=========================================================================
+
+4.3)CORRER AS APPS EM JANELAS DO TERMINAL SEPARADAS AO MESMO TEMPO QUE 
+SE CORRE O COUNTERFIT NOUTRA JANELA. O SENSOR E ATUADOR DEVEM TER SIDO 
+PREVIAMENTE ADICIONADOS NO COUNTERFIT - NESTE CASO SENSOR LIGHT NO PIN 0
+E ATUADOR LED NO PIN 5
+
+=========================================================================
+=========================================================================
+  LESSON 5 - PREDICT PLANT GROWTH (SENSOR DE HUMIDADE E TEMPERATURA DHT)
+=========================================================================
+=========================================================================
+
+INSTALAR PACKAGE PARA SENSORES DHT11 TEMPERATURA E HUMIDADE:
+
+pip3 install counterfit-shims-seeed-python-dht
+
+
+=========================================================================
+
+0)CRIAR FICHEIRO APP.py PARA OBTER VALORES DE SENSOR DE TEMPERATURA:
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_seeed_python_dht import DHT
+
+sensor = DHT("11", 5)
+
+while True:
+    _, temp = sensor.read()
+    print(f'Temperature {temp}°C')
+
+    time.sleep(10)
+    
+
+=========================================================================
+
+5.1)CRIAR FICHEIRO APP.py PARA PUBLICAR OS VALORES DE TELEMETRIA 
+LIDOS PELO SENSOR DE TEMPERATURA USANDO MQTT (SUBSTITUIR O VALOR DO ID):
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_seeed_python_dht import DHT
+import paho.mqtt.client as mqtt
+import json
+
+sensor = DHT("11", 5)
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+client_name = id + 'temperature_sensor_client'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+print("MQTT connected!")
+
+while True:
+    _, temp = sensor.read()
+    telemetry = json.dumps({'temperature' : temp})
+
+    print("Sending telemetry ", telemetry)
+
+    mqtt_client.publish(client_telemetry_topic, telemetry)
+
+    time.sleep(2)
+
+=========================================================================
+
+5.2)CRIAR FICHEIRO SERVER.py PARA RECEBER OS VALORES DE TELEMETRIA 
+LIDOS PELO SENSOR DE TEMPERATURA USANDO MQTT E ENVIAR PARA UM 
+FICHEIRO CSV (SUBSTITUIR O VALOR DO ID):
+
+import json
+import time
+
+import paho.mqtt.client as mqtt
+
+from os import path
+import csv
+from datetime import datetime
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+server_command_topic = id + '/commands'
+client_name = id + 'temperature_sensor_server'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+temperature_file_name = 'temperature.csv'
+fieldnames = ['date', 'temperature']
+
+if not path.exists(temperature_file_name):
+    with open(temperature_file_name, mode='w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+def handle_telemetry(client, userdata, message):
+    payload = json.loads(message.payload.decode())
+    print("Message received:", payload)
+
+    with open(temperature_file_name, mode='a') as temperature_file:        
+        temperature_writer = csv.DictWriter(temperature_file, fieldnames=fieldnames)
+        temperature_writer.writerow({'date' : datetime.now().astimezone().replace(microsecond=0).isoformat(), 'temperature' : payload['temperature']})
+
+mqtt_client.subscribe(client_telemetry_topic)
+mqtt_client.on_message = handle_telemetry
+
+while True:
+    time.sleep(2)
+    
+=========================================================================
+    
+5.3)CORRER AS APPS (APP.py E SERVER.py) EM JANELAS DO TERMINAL SEPARADAS 
+AO MESMO TEMPO QUE SE CORRE O COUNTERFIT NOUTRA JANELA. O SENSORES DE 
+HUMIDADE E TEMPERATURA DEVEM TER SIDO PREVIAMENTE ADICIONADOS NO 
+COUNTERFIT - NESTE CASO SENSOR HUMIDITY NO PIN 5 E O TEMPERATURE NO 
+PIN 6 - O DHT COMBINA O FUNCIONAMENTO DOS DOIS SENSORES MAS AQUI SÓ 
+INTERESSA O DE TEMPERATURA
+
+=========================================================================
+=========================================================================
+LESSON 6 - DETECT SOIL MOISTURE (SENSOR DE HUMIDADE DO SOLO         	ANALÓGICO)					   
+=========================================================================
+=========================================================================
+
+6.1) CRIAR FICHEIRO APP.py PARA LER O VALOR DO SENSOR ANALÓGICO DE MEDIÇÃO DE 
+HUMIDADE DO SOLO:
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_grove.adc import ADC
+
+adc = ADC()
+
+while True:
+    soil_moisture = adc.read(0)
+    print("Soil moisture:", soil_moisture)
+
+    time.sleep(10)
+    
+=========================================================================
+    
+6.2) CORRER A APP NA JANELA DO TERMINAL AO MESMO TEMPO QUE SE CORRE O COUNTERFIT 
+NOUTRA JANELA DO TERMINAL - O SENSOR DE HUMIDADE SOIL MOISTURE DEVE TER 
+SIDO ADICIONADO PREVIAMENTE NO COUNTERFIT NO PIN 0 (adc.read(0))
+
+=========================================================================
+=========================================================================
+LESSON 7 - AUTOMATED PLANT WATERING (RELÉ, SENSOR DE 
+HUMIDADE DO SOLO E MQTT) 
+=========================================================================
+=========================================================================
+
+0)CRIAR FICHEIRO APP.py PARA CONTROLAR O RELÉ EM FUNÇÃO DO VALOR RECOLHIDO
+PELO SENSOR DE HUMIDADE DO SOLO
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_grove.adc import ADC
+from counterfit_shims_grove.grove_relay import GroveRelay
+
+adc = ADC()
+relay = GroveRelay(5)
+
+while True:
+    soil_moisture = adc.read(0)
+    print("Soil moisture:", soil_moisture)
+
+    if soil_moisture > 450:
+        print("Soil Moisture is too low, turning relay on.")
+        relay.on()
+    else:
+        print("Soil Moisture is ok, turning relay off.")
+        relay.off()
+
+    time.sleep(10)
+    
+=========================================================================
+
+7.1)CRIAR FICHEIRO APP.py PARA PUBLICAR OS VALORES DE TELEMETRIA 
+LIDOS PELO SENSOR DE HUMIDADE DE SOLO USANDO MQTT E ATIVAR O RELÉ 
+ATRAVÉS DAS INTRUÇÕES ENVIADOS PELO MQTT (SUBSTITUIR O VALOR DO ID):
+
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_grove.adc import ADC
+from counterfit_shims_grove.grove_relay import GroveRelay
+import json
+import paho.mqtt.client as mqtt
+
+adc = ADC()
+relay = GroveRelay(5)
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+server_command_topic = id + '/commands'
+client_name = id + 'soilmoisturesensor_client'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+def handle_command(client, userdata, message):
+    payload = json.loads(message.payload.decode())
+    print("Message received:", payload)
+
+    if payload['relay_on']:
+        relay.on()
+    else:
+        relay.off()
+
+mqtt_client.subscribe(server_command_topic)
+mqtt_client.on_message = handle_command
+
+while True:
+    soil_moisture = adc.read(0)
+    print("Soil moisture:", soil_moisture)
+
+    mqtt_client.publish(client_telemetry_topic, json.dumps({'soil_moisture' : soil_moisture}))
+
+    time.sleep(10)
+    
+=========================================================================
+
+7.2)CRIAR FICHEIRO SERVER.py PARA RECEBER OS VALORES DE TELEMETRIA 
+LIDOS PELO SENSOR DE HUMIDADE E ENVIAR INTRUÇÕE SAO RELÉ
+USANDO MQTT E ENVIAR PARA UM (SUBSTITUIR O VALOR DO ID):  
+
+import json
+import time
+
+import paho.mqtt.client as mqtt
+
+id = '<ID>'
+
+client_telemetry_topic = id + '/telemetry'
+server_command_topic = id + '/commands'
+client_name = id + 'soilmoisturesensor_server'
+
+mqtt_client = mqtt.Client(client_name)
+mqtt_client.connect('test.mosquitto.org')
+
+mqtt_client.loop_start()
+
+def handle_telemetry(client, userdata, message):
+    payload = json.loads(message.payload.decode())
+    print("Message received:", payload)
+
+    command = { 'relay_on' : payload['soil_moisture'] > 450 }
+    print("Sending message:", command)
+
+    client.publish(server_command_topic, json.dumps(command))
+
+mqtt_client.subscribe(client_telemetry_topic)
+mqtt_client.on_message = handle_telemetry
+
+while True:
+    time.sleep(2)
+
+
+=========================================================================
+
+7.3) CORRER AS APPS (APP.py E SERVER.py) EM JANELAS DO TERMINAL SEPARADAS 
+AO MESMO TEMPO QUE SE CORRE O COUNTERFIT NOUTRA JANELA. O SENSOR DE HUMIDADE
+E O RELÉ DEVEM TER SIDO PREVIAMENTE ADICIONADOS NO 
+COUNTERFIT - NESTE CASO SOIL MOISTURE NO PIN 0 E O RELAY NO 
+PIN 5 
+
+
+=========================================================================
+=========================================================================
+LESSON 8 - MIGRATE YOUR PLANT TO THE CLOUD (SENSOR DE HUMIDADE DO SOLO 
+E AZURE) - A LESSON 9 É A CONTINUAÇÃO DESTE
+=========================================================================
+=========================================================================
+
+FAZER LOGIN NO AZURE:
+
+az login
+
+=========================================================================
+
+IMPORTANTE: PARA LISTAR TODOS OS RESOURCE GROUPS PODEMOS USAR O COMANDO:
+
+az group list --output table
+
+=========================================================================
+
+IMPORTANTE: PARA APAGAR UM RESOURCE GROUP PODEMOS USAR O COMANDO:
+
+az group delete --name <MyResourceGroup>
+
+=========================================================================
+
+PARA LISTAR TODOS OS DATA CENTERS PODEMOS USAR O SEGUINTE COMANDO (NAS 
+AULAS USAMOS O DATA CENTER uksouth):
+
+az account list-locations --output table
+
+=========================================================================
+
+8.1) CRIAR UM RESOURCE GROUP (O NOME DO RESOURCE GROUP PODE SER SEPARADO POR HIFÉNS E 
+TUDO EM LETRAS MÍNUCULAS E PARA A LOCATION PODEMOS USAR uksouth):
+
+az group create --name <nome-do-grupo> --location <location>
+
+=========================================================================
+
+8.2) CRIAR UM HUB (ATENÇÃO: O NOME DO HUB (hub_name) TEM DE SER GLOBALMENTE ÚNICO 
+E O NOME DO GRUPO É O QUE FOI CRIADO NO PASSO ANTERIOR):
+
+az iot hub create --resource-group <nome-do-grupo> --sku F1 --partition-count 2 --name <hub_name>
+
+=========================================================================
+
+8.3) REGISTAR UM DISPOSITIVO NO HUB (GUARDAR O NOME DO DISPOSITIVO QUE VAI SER PRECISO E O NOME
+DO HUB É O NOME DO HUB CRIADO NO PASSO ANTERIOR(hub_name)):
+
+az iot hub device-identity create --device-id <nome-do-dispositivo> --hub-name <hub_name>
+
+=========================================================================
+
+8.4) PARA QUE O DISPOSITIVO QUE TEMOS LOCALMENTE SE LIGUE AO HUB VAI SER 
+NECESSÁRIA UMA CONNECTION STRING QUE É OBTIDA PELO SEGUINTE COMANDO (SUBSTITUIR O NOME DO DISPOSITIVO PELO NOME GUARADO 
+NO PASSO ANTERIOR. SUBSTITUIR O NOME DO HUB(hub_name)):
+
+az iot hub device-identity connection-string show --device-id <nome-do-dispositivo> --output table --hub-name <hub_name>
+
+ATENÇÃO: A CONNECTION STRING É TUDO O QUE É OBTIDO DESTE COMANDO INCLUINDO A PALAVRA "HostName="
+
+=========================================================================
+
+8.5)INSTALAR O PACOTE PARA O AZURE:
+
+pip3 install azure-iot-device
+
+=========================================================================
+
+8.6)CRIAR FICHEIRO APP.py E CORRER NO TERMINAL (SUBSTITUIR A
+<connection_string> PELA CONNECTION STRING OBTIDA NO PASSO 8.4 ):
+
+from counterfit_connection import CounterFitConnection
+CounterFitConnection.init('127.0.0.1', 5000)
+
+import time
+from counterfit_shims_grove.adc import ADC
+from counterfit_shims_grove.grove_relay import GroveRelay
+import json
+from azure.iot.device import IoTHubDeviceClient, Message, MethodResponse
+
+connection_string = '<connection_string>'
+
+adc = ADC()
+relay = GroveRelay(5)
+
+device_client = IoTHubDeviceClient.create_from_connection_string(connection_string)
+
+print('Connecting')
+device_client.connect()
+print('Connected')
+
+def handle_method_request(request):
+    print("Direct method received - ", request.name)
+    
+    if request.name == "relay_on":
+        relay.on()
+    elif request.name == "relay_off":
+        relay.off()
+
+    method_response = MethodResponse.create_from_method_request(request, 200)
+    device_client.send_method_response(method_response)
+
+device_client.on_method_request_received = handle_method_request
+
+while True:
+    soil_moisture = adc.read(0)
+    print("Soil moisture:", soil_moisture)
+
+    message = Message(json.dumps({ 'soil_moisture': soil_moisture }))
+    device_client.send_message(message)
+
+    time.sleep(10)
+
+=========================================================================
+
+8.7)CORRER A APP (APP.py) EM JANELA DO TERMINAL AO MESMO TEMPO QUE SE CORRE O COUNTERFIT 
+NOUTRA JANELA. O SENSOR DE HUMIDADE E O RELÉ DEVEM TER SIDO PREVIAMENTE ADICIONADOS NO 
+COUNTERFIT - NESTE CASO SOIL MOISTURE NO PIN 0 E O RELAY NO PIN 5 
+
+=========================================================================
+
+8.8)NESTE EXERCÍCIO EM EXPECÍFICO O OBJECTIVO ERA VERIFICAR QUE AS MENSAGENS CHEGAM AO HUB.
+PARA VERIFICAR ISSO, NOUTRA JANELA DO TERMINAL CORRER O SEGUINTE COMANDO (SUBSTITUIR O NOME DO HUB
+(hub_name):
+
+az iot hub monitor-events --properties anno --hub-name <hub_name>
+
+=========================================================================
+
+8.9)SE QUISER-MOS ENVIAR UM COMANDO DIRECTAMENTE ATRAVÉS DA LINHA DE COMANDO PODEMOS USAR O 
+SEGUINTE COMANDO QUE NESTE CASO VAI USAR O MÉTODO relay_on DO NOSSO CÓDIGO (SUBSTITUIR O NOME DO DISPOSITIVO 
+(nome_do_dispositivo) PELO NOME GUARADO NO PASSO 8.3 E O NOME DO HUB(hub_name)):
+
+az iot hub invoke-device-method --device-id <nome_do_dispositivo> --method-name relay_on --method-payload '{}' --hub-name <hub_name>
+
+=========================================================================
+=========================================================================
+LESSON 9 - MIGRATE YOUR APPLICATION LOGIC TO THE CLOUD 
+(SENSOR DE HUMIDADE DO SOLO E AZURE/AZURITE - CRIAÇÃO DE UMA FUNÇÃO)
+ATENÇÃO: CONTINUAÇÃO DO 8!!!!!! 
+=========================================================================
+=========================================================================
+
+CRIAR UM PASTA CHAMADA AZURITE (OPCIONAL PORQUE O COMANDO SEGUINTE 
+CRIA UMA PASTA AZURITE DENTRO DO DIRECTORIO ONDE SE ESTIVER 
+SE ELA NÃO EXISTIR):
+
+mkdir azurite
+
+==========================================================================
+
+9.1)NA LINHA DE COMANDOS CORRER O SEGUINTE COMANDO:
+
+azurite --location azurite
+
+ATENÇÃO: DEIXAR ESTE TERMINAL A CORRER TAL COMO SE DEIXA O DO COUNTERFIT 
+E TRABALHAR NOUTRO !!!!!!!!!!
+
+==========================================================================
+
+9.2)CRIAR A PASTA PARA A FUNÇÃO E NAVEGAR PARA ELA:
+
+mkdir <nome-da-pasta>
+cd <nome-da-pasta>
+
+==========================================================================
+
+9.3)DENTRO DA PASTA CORRER O COMANDO (ATENÇÃO AO NOME): 
+
+func init --worker-runtime python <nome-pode-ser-igual-ao-da-pasta>
+
+==========================================================================
+
+9.4)NO FICHEIRO RECEM CRIADO local.settings.json ACRESCENTAR 
+O SEGUITE CÓDIGO ONDE FALTA:
+
+"AzureWebJobsStorage": "UseDevelopmentStorage=true"
+
+IMPORTANTE: GRAVAR SEMPRE QUE SE ALTERA UM FICHEIRO 
+(NO VSCODE NÃO GRAVA SOZINHO)
+
+==========================================================================
+
+9.5)INSTALAR O QUE ESTÁ DENTRO DO requirements.txt 
+(NESTE CASO O azure-functions)
+CORRER COMANDO NO TERMINAL DO VSCODE:
+
+pip3 install -r requirements.txt
+
+==========================================================================
+
+9.6)NESTE PONTO PODEMOS TESTAR (OPCIONAL):
+
+func start
+
+==========================================================================
+
+9.7)ABRIR NO VSCODE
+
+code .
+
+==========================================================================
+
+9.8)OBTER A CONNECTION STRING (SUBSTITUIR O NOME DO HUB (hub_name)):
+
+az iot hub connection-string show --default-eventhub --output table --hub-name <hub_name>
+
+ATENÇÃO: ESTA CONECTION STRING NÃO É OBTIDA DA MESMA FORMA QUE NO EXERCÍCIO 8.4). 
+NO EXERCÍCIO 8.4) A CONNECTION STRING ERA RELATIVA A UM DISPOSITIVO LOCAL REGISTADO NO HUB. 
+A CONECTION STRING É TODO O RESULTADO OBTIDO. COMEÇA EM "Endpoint="
+
+==========================================================================
+
+9.9)ADICIONAR A CONNECTION STRING OBTIDA NO FICHEIRO local.settings.json:
+
+"IOT_HUB_CONNECTION_STRING": "<connection string>"
+
+==========================================================================
+
+9.10)CRIAR O EVENT TRIGGER A PARTIR DO TERMINAL DO VS CODE:
+
+func new --name iot-hub-trigger --template "Azure Event Hub trigger"
+
+ISTO VAI CRIAR UMA PASTA CHAMADA iot-hub-trigger DENTRO DA PASTA DA FUNÇÃO
+COM OS FICHEIROS __init__.py E function.json
+==========================================================================
+
+9.11)SUBSTITUIR O CODIGO DO FICHEIRO __init__.py POR:
+
+import logging
+
+import azure.functions as func
+
+def main(event: func.EventHubEvent):
+    logging.info('Python EventHub trigger processed an event: %s',
+                event.get_body().decode('utf-8'))
+
+==========================================================================
+
+9.12)SUBSTITUIR O VALOR DE CARDINALITY NO FICHEIRO function.json E ADICIONAR 
+A REFERENCIA PARA A CONNECTION STRING (ATENÇÃO: AQUI NÃO SE INSERE O VALOR DA CONNECTION
+STRING - FICA EXACTAMENTE O QUE ESTÁ ABAIXO!!!!!!). O "eventHubName" DEVE FICAR VAZIO E O 
+PARÂMETRO "name" DEVE TER O VALOR "event" - EXEMPLO COMPLETO DO CÓDIGO QUE DEVE
+ESTAR NO function.json ABAIXO:
+
+{
+  "scriptFile": "__init__.py",
+  "bindings": [
+    {
+      "type": "eventHubTrigger",
+      "name": "event",
+      "direction": "in",
+      "eventHubName": "",
+      "connection": "IOT_HUB_CONNECTION_STRING",
+      "cardinality": "one",
+      "consumerGroup": "$Default",
+      "dataType": "binary"
+    }
+  ]
+}
+
+==========================================================================
+
+9.13) ATUALIZAR A VERSÃO NO FICHEIRO host.json PARA O VALOR SEGUINTE:
+
+"version": "[2.*, 3.0.0)"
+
+===========================================================================
+
+9.14)TESTAR (CORRER NO TERMINAL DO VSCODE):
+
+func start
+
+===========================================================================
+
+9.15)CORRER NO TERMINAL DO VSCODE AO MESMO TESMPO QUE SE CORRE A 
+APP.py do EXERCÍCIO 8.6) NUM TERMINAL A PARTE, AO MESMO TEMPO QUE SE CORRE
+O COUNTERFIT NOUTRO TERMINAL E AO MESMO TEMPO QUE SE CORRE O AZURITE NOUTRO TERMINAL (VER 9.1)).
+O SENSOR DE HUMIDADE E O RELÉ DEVEM TER SIDO PREVIAMENTE ADICIONADOS NO 
+COUNTERFIT - NESTE CASO SOIL MOISTURE NO PIN 0 E O RELAY NO PIN 5 
+
+===========================================================================
+
+9.16)ATÉ AGORA A APP.py ESTÁ A "OUVIR" AS MENSAGENS DO IoT HUB (NO TERMINAL ONDE ESTÁ 
+A CORRER A APP.py DEVE ESTAR A RECEBER OS VALORES REGISTADOS PELO SENSOR). 
+O QUE SE PERTENDE AGORA É ENVIAR COMANDOS PARA O DISPOSITIVO IoT ATRAVÉS DO REGISTRY MANAGER.
+PARA ISSO É PRECISO OBTER OUTRA CONNECTION STRING, DESTA VEZ PARA O REGISTRY MANAGER.
+SUBSTITUIR O hub_name PELO NOME DO HUB. MAIS UMA VEZ A CONNECTION STRING COMEÇA EM "HostName="
+ATÉ AO FIM:
+
+az iot hub connection-string show --policy-name service --output table --hub-name <hub_name>
+
+===========================================================================
+
+9.17)NO FICHEIRO local.settings.json À SEMELHANÇA DO QUE SE FEZ NO 9.9) TEM DE
+SE ADICIONAR A CONNECTION STRING DESTA VEZ PARA O REGISTRY MANAGER (SUBSTITUIR 
+connection string PELO QUE FOI OBTIDO EM 9.16)):
+
+"REGISTRY_MANAGER_CONNECTION_STRING": "<connection string>"
+
+===========================================================================
+
+9.18)O SDK PARA O REGISTRY MANAGER ESTÁ DISPONÍVEL VIA PIP. ADICIONAR AO requirements.txt:
+
+azure-iot-hub
+
+===========================================================================
+
+9.19)INSTALAR O QUE ESTÁ DENTRO DO requirements.txt 
+(NESTE CASO DEVEM ESTAR O azure-functions E O azure-iot-hub).
+CORRER COMANDO NO TERMINAL DO VSCODE:
+
+pip3 install -r requirements.txt
+
+===========================================================================
+
+9.20)ALTERAR O __init__.py (DEVE FICAR EXACTAMENTE DESTA FORMA, 
+NÃO É PRECISO SUBSTITUIR AQUI NENHUMA CONNECTION STRING, 
+POIS ELA JÁ ESTÁ DEFINIDA NO FICHEIRO local.settings.json):
+
+
+import logging
+
+import azure.functions as func
+
+import json
+import os
+from azure.iot.hub import IoTHubRegistryManager
+from azure.iot.hub.models import CloudToDeviceMethod
+
+def main(event: func.EventHubEvent):    
+    body = json.loads(event.get_body().decode('utf-8'))
+    device_id = event.iothub_metadata['connection-device-id']
+
+    logging.info(f'Received message: {body} from {device_id}')
+
+    soil_moisture = body['soil_moisture']
+
+    if soil_moisture > 450:
+        direct_method = CloudToDeviceMethod(method_name='relay_on', payload='{}')
+    else:
+        direct_method = CloudToDeviceMethod(method_name='relay_off', payload='{}')
+
+    logging.info(f'Sending direct method request for {direct_method.method_name} for device {device_id}')
+    
+    registry_manager_connection_string = os.environ['REGISTRY_MANAGER_CONNECTION_STRING']
+    registry_manager = IoTHubRegistryManager(registry_manager_connection_string)
+
+    registry_manager.invoke_device_method(device_id, direct_method)
+
+    logging.info('Direct method request sent!')
+
+
+===========================================================================
+
+9.21)TESTAR NO TERMINAL DO VSCODE:
+
+func start
+
+===========================================================================
+
+9.22)NESTE MOMENTO O CÓDIGO TRABALHA LOCALMENTE. O OBJECTIVO É QUE A FUNÇÃO TRABALHE 
+SERVERLESS NA CLOUD. O PRIMEIRO PASSO É CRIAR UMA CONTA STORAGE ATRAVÉS DO COMANDO SEGUINTE.
+ATENÇÃO QUE O storage_name TEM DE SER GLOBALMENTE ÚNICO APENAS PODE CONTER LETRAS MINÚSCULAS
+E NÚMEROS:
+
+az storage account create --resource-group soil-moisture-sensor --sku Standard_LRS --name <storage_name> 
+
+===========================================================================
+
+9.23)CRIAR A FUNCTION APP (SUBSTITUIR A location POR uksouth (OU OUTRA SE SE ESTIVER
+A USAR OUTRA), SUBSTITUIR O storage_name PELO NOME USADO ACIMA EM 9.22) E ATRIBUIR UM NOME 
+GLOBALMENTE ÚNICO à function_app_name  ):
+
+az functionapp create --resource-group soil-moisture-sensor --runtime python --functions-version 3 --os-type Linux --consumption-plan-location <location> --storage-account <storage_name> --name <functions_app_name>
+
+===========================================================================
+
+9.24)CORRER O COMANDO SEGUINTE PARA DEFINIR A IOT_HUB_CONNECTION_STRING. TEM QUE SE SUBSTITUIR
+O function_app_name PELO NOME DA FUNÇÃO QUE FOI ATRIBUIDO EM 9.23) E O connection string PELO
+VALOR QUE ESTÁ NO FICHEIRO local.settings.json DESDE A PALAVRA Endpoint ATÉ AO 
+FINAL, SEM AS ASPAS (SÓ FICA COM AS ASPAS QUE APARECEM ABAIXO!!!!):
+
+az functionapp config appsettings set --resource-group soil-moisture-sensor --name <functions_app_name> --settings "IOT_HUB_CONNECTION_STRING=<connection string>"
+
+===========================================================================
+
+9.25)CORRER O MESMO COMANDO MAS AGORA PARA DEFINIR A REGISTRY_MANAGER_CONNECTION_STRING. TEM QUE SE SUBSTITUIR
+O function_app_name PELO NOME DA FUNÇÃO QUE FOI ATRIBUIDO EM 9.23) E O connection string PELO
+VALOR QUE ESTÁ NO FICHEIRO local.settings.json DESDE A PALAVRA Hostname ATÉ AO 
+FINAL, SEM AS ASPAS (SÓ FICA COM AS ASPAS QUE APARECEM ABAIXO!!!!):
+
+az functionapp config appsettings set --resource-group soil-moisture-sensor --name <functions_app_name> --settings "REGISTRY_MANAGER_CONNECTION_STRING=<connection string>"
+
+
+===========================================================================
+
+9.26)PARA FAZER DEPLOY DA FUNÇÃO PARA A CLOUD CORRER O SEGUINTE COMANDO
+NO TERMINAL DO VSCODE (SUBSTITUIR functions_app_name PELO NOME ATRIBUIDO EM 9.23)):
+
+func azure functionapp publish <functions_app_name>
+
+===========================================================================
+
+9.27)NESTE MOMENTO AO CORRER O COUNTERFIT NOUTRO TERMINAL AO MESMO TEMPO QUE SE CORRE APP.py
+A APP.py DEVE RECEBR OS VALORES REGISTADOS E O RELÉ DEVE SER ATIVADO NA ALTURA CERTA 
+O SENSOR DE HUMIDADE E O RELÉ DEVEM TER SIDO PREVIAMENTE ADICIONADOS NO 
+COUNTERFIT - NESTE CASO SOIL MOISTURE NO PIN 0 E O RELAY NO PIN 5 
+
+===========================================================================
+
+https://portal.azure.com
