@@ -1,1 +1,82 @@
+#dar login
+az login
+
+#criar um grupo
+az group create --name <soil-moisture-sensor> --location uksouth
+
+#criar hub no grupo
+az iot hub create --resource-group <soil-moisture-sensor> --sku F1 --partition-count 2 --name <hub_name>
+
+#registar o hub
+az iot hub device-identity create --device-id <soil-moisture-sensor> --hub-name <hub_name>
+
+#guardar connection str do group
+az iot hub device-identity connection-string show --device-id <soil-moisture-sensor> --output table --hub-name <hub_name>
+
+#instalar packages
+pip3 install azure-iot-device
+
+### opcional para monitorar o que ta a acontecer no hub
+az iot hub monitor-events --hub-name <hub_name>
+
+#-----------------------------------------------------------------
+# Neste momento a coisa ja manda cenas para o hub e ele deveria la receber
+#------------------------------------------------------------------------
+
+
+#criar pasta para a azurite
+mkdir azurite
+azurite --location azurite
+
+#criar uma pasta para o trigger (acho que é dentro da pasta azurite)
+mkdir <soil-moisture-trigger>
+cd <soil-moisture-trigger>
+
+#criar la dentro uma funcao
+func init --worker-runtime python <soil-moisture-trigger>
+
+#alterar em local.settings.json
+"AzureWebJobsStorage": "UseDevelopmentStorage=true",
+
+#instalar requisitos
+pip3 install -r requirements.txt
+
+#testar
+func start
+
+#abrir vs code e dar yes na detecao da cena
+code .
+
+#obter e guardar o endpoint do hub
+az iot hub connection-string show --default-eventhub --output table --hub-name <hub_name>
+
+#substituir a connection string em local.settings.json, pelo valor guardado acima
+"IOT_HUB_CONNECTION_STRING": "<connection string>"
+
+#correr isto no terminal do vscode para criar uma funcao chamada iot-hub-trigger
+func new --name iot-hub-trigger --template "Azure Event Hub trigger"
+
+#alterar em function.json
+"cardinality": "one",
+"connection": "IOT_HUB_CONNECTION_STRING",
+"eventHubName": "",
+"name": "event",
+
+#alterar em host.json
+"version": "[2.*, 3.0.0)"
+
+#guardar connection str do hub
+az iot hub connection-string show --policy-name service --output table --hub-name <hub_name>
+
+#substituir em local.settings.json
+"REGISTRY_MANAGER_CONNECTION_STRING": "<connection string>"
+
+#adicionar aos requirements
+azure-iot-hub
+
+#instalar os requirimentos
+pip3 install -r requirements.txt
+
+#------------- deploy na cloud ----------
+
 
