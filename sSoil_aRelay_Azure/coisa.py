@@ -7,7 +7,7 @@ from counterfit_shims_grove.grove_relay import GroveRelay
 import json
 from azure.iot.device import IoTHubDeviceClient, Message, MethodResponse
 
-connection_string = "HostName=hubFranc.azure-devices.net;DeviceId=soil-moisture-sensor-franc;SharedAccessKey=b26mHBZn7N3woqlU3EK24Oh83IKIHQYKaHq2jO6Ou1o="
+connection_string = "HostName=hub connection string"
 device_client = IoTHubDeviceClient.create_from_connection_string(connection_string)
 print('Connecting')
 device_client.connect()
